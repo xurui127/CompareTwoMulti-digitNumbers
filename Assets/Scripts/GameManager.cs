@@ -9,8 +9,34 @@ public enum Difficulty
     Medium = 1,
     Hard = 2,
 }
+public enum AnimalType
+{
+    Elephant = 0,
+    Tiger = 1,
+    Monkey = 2,
+
+}
 public class GameManager : MonoBehaviour
 {
+
+    private static GameManager instance;
+    public static GameManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindAnyObjectByType<GameManager>();
+            }
+            if (instance == null)
+            {
+                GameObject obj = new();
+                instance = obj.AddComponent<GameManager>();
+            }
+            return instance;
+        }
+    }
+    #region Comparition numbers Refrennse
     [SerializeField] private Difficulty difficulty;
     [Header("Prefabs")]
     [SerializeField] private GameObject numberContainer;
@@ -22,20 +48,39 @@ public class GameManager : MonoBehaviour
     [SerializeField] int decimalPlaces = 3;
     [SerializeField] private string result;
     [SerializeField] private TMP_Text currentOperation;
-
     [SerializeField] GameObject NextButton;
+    [SerializeField] private int level;
 
+    //Comparation numbers 
     private float number1;
     private float number2;
     private string formattedNumber1;
     private string formattedNumber2;
 
-    [SerializeField] private int level;
+    private Dictionary<string, bool> optionsDictionary = new();
+    private List<string> availableOptions = new();
+    #endregion
 
-    Dictionary<string, bool> optionsDictionary = new();
-    List<string> availableOptions = new();
+    #region Mini Game Refennse
+    [SerializeField] private Camera cam;
+    [SerializeField] GameObject animalPerfab;
+    [SerializeField] int spawnNumber = 3;
+
+    private float spawnPosY = -3f;
+
+    private List<GameObject> animalList = new();
+    #endregion
     private void Awake()
     {
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(this);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
         optionsDictionary.Add("<", false);
         optionsDictionary.Add(">", false);
         optionsDictionary.Add("=", false);
@@ -45,7 +90,8 @@ public class GameManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        GenerateQuestion();
+        //GenerateQuestion();
+        SpwanAnimals();
     }
 
     // Update is called once per frame
@@ -56,7 +102,7 @@ public class GameManager : MonoBehaviour
             GenerateQuestion();
         }
     }
-
+    #region Comparition Methods
     public void GenerateQuestion()
     {
         GenerateNumbers(ref number1, ref formattedNumber1);
@@ -103,9 +149,9 @@ public class GameManager : MonoBehaviour
         }
     }
     private void GenerateHardQuestion()
-    { 
-        float minOffset = Mathf.Pow(10, -decimalPlaces) * 25; 
-        float maxOffset = Mathf.Pow(10, -decimalPlaces) * 50; 
+    {
+        float minOffset = Mathf.Pow(10, -decimalPlaces) * 25;
+        float maxOffset = Mathf.Pow(10, -decimalPlaces) * 50;
 
         float newNumber;
 
@@ -260,4 +306,40 @@ public class GameManager : MonoBehaviour
         explainText.text = $"Incorrect! \n" +
                            $"The correct answer is : {number1} {result} {number2}";
     }
+    #endregion
+
+    #region Mini Game Methods
+
+    internal float GetRandomCameraPosition()
+    {
+        Vector3 screenBottomLeft = cam.ViewportToWorldPoint(new Vector3(0, 0, cam.transform.position.z));
+        Vector3 screenTopRight = cam.ViewportToWorldPoint(new Vector3(1, 1, cam.transform.position.z));
+
+        float minX = screenBottomLeft.x;
+        float maxY = screenTopRight.x;
+        float newX = UnityEngine.Random.Range(minX, maxY);
+        return newX;
+    }
+    private void SpwanAnimals()
+    {
+        while (spawnNumber > 0)
+        {
+            float randomX = GetRandomCameraPosition();
+            Vector3 spawnPosition = new Vector3(randomX, spawnPosY, 0);
+            var animal = Instantiate(animalPerfab, spawnPosition, Quaternion.identity);
+            var randomAnimalType = GetRandomAnimalType();
+            string lowerCaseAnimal = randomAnimalType.ToString().ToLower();
+            animal.GetComponent<TextReplacer>().text.text = lowerCaseAnimal;
+            animalList.Add(animal);
+            spawnNumber--;
+        }
+    }
+
+    private AnimalType GetRandomAnimalType()
+    {
+        var values = (AnimalType[])System.Enum.GetValues(typeof(AnimalType));
+        int randomIndex =UnityEngine.Random.Range(0, values.Length);
+        return values[randomIndex];
+    }
+    #endregion
 }
